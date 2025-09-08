@@ -1,0 +1,5 @@
+{
+  "name": "Job Portal",
+  "description": "A minimalist and aesthetically pleasing job portal for employees and employers, powered by Gemini for generating job and profile data.",
+  "requestFramePermissions": []
+}
