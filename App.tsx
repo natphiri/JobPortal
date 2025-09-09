@@ -12,6 +12,7 @@ import SignUpPage from './components/SignUpPage';
 import CompaniesPage from './components/CompaniesPage';
 import { ThemeProvider } from './contexts/ThemeContext';
 import EmployeeProfilePage from './components/EmployeeProfilePage';
+import ApplicationModal from './components/ApplicationModal';
 
 type ActiveView = 'jobs' | 'companies' | 'profile';
 
@@ -38,6 +39,9 @@ const JobPortal: React.FC<{ user: User }> = ({ user }) => {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [jobAlerts, setJobAlerts] = useState<JobAlert[]>([]);
   
+  // State for the application modal, lifted up to be globally accessible
+  const [applyingForJob, setApplyingForJob] = useState<Job | null>(null);
+
   const addNotification = useCallback((message: string, type: NotificationType) => {
     const newNotification: Notification = {
       id: Date.now(),
@@ -156,6 +160,27 @@ const JobPortal: React.FC<{ user: User }> = ({ user }) => {
     };
     setApplications(prev => [newApplication, ...prev]);
   };
+
+  const handleOpenApplicationModal = (job: Job) => {
+    setApplyingForJob(job);
+  };
+
+  const handleCloseApplicationModal = () => {
+    setApplyingForJob(null);
+  };
+
+  const handleApplicationSubmit = (applicationData: { coverLetter: string; cvFile: File | null; otherFiles: File[] }) => {
+    if (!applyingForJob) return;
+    
+    console.log('Application submitted for:', applyingForJob.title);
+    console.log('Application Data:', applicationData);
+
+    addApplication(applyingForJob.id);
+    
+    addNotification(`You have successfully applied for "${applyingForJob.title}".`, NotificationType.Success);
+
+    handleCloseApplicationModal();
+  };
   
   const updateApplicationStatus = (applicationId: string, status: ApplicationStatus) => {
     setApplications(prev => 
@@ -263,7 +288,11 @@ const JobPortal: React.FC<{ user: User }> = ({ user }) => {
 
     if (user.role === UserRole.Employee) {
       if (activeView === 'companies') {
-        return <CompaniesPage jobs={jobs} />;
+        return <CompaniesPage 
+            jobs={jobs} 
+            applications={applications} 
+            openApplicationModal={handleOpenApplicationModal}
+        />;
       }
       if (activeView === 'profile') {
         const currentUserCv = cvs.find(cv => cv.userId === user.id);
@@ -284,11 +313,11 @@ const JobPortal: React.FC<{ user: User }> = ({ user }) => {
         <EmployeeDashboard 
             jobs={jobs} 
             applications={applications}
-            addApplication={addApplication}
             addNotification={addNotification} 
             jobAlerts={jobAlerts}
             addJobAlert={addJobAlert}
             removeJobAlert={removeJobAlert}
+            openApplicationModal={handleOpenApplicationModal}
         />
       );
     } else {
@@ -319,6 +348,16 @@ const JobPortal: React.FC<{ user: User }> = ({ user }) => {
         onNotificationsRead={markNotificationsAsRead}
       />
       {renderContent()}
+      
+      {/* Render ApplicationModal here, at the top level for employees */}
+      {user.role === UserRole.Employee && (
+        <ApplicationModal 
+            isOpen={!!applyingForJob}
+            job={applyingForJob}
+            onClose={handleCloseApplicationModal}
+            onSubmit={handleApplicationSubmit}
+        />
+      )}
     </div>
   );
 };
