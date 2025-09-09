@@ -9,7 +9,6 @@ import CustomerServiceIcon from './icons/CustomerServiceIcon';
 import FinanceIcon from './icons/FinanceIcon';
 import HealthcareIcon from './icons/HealthcareIcon';
 import HumanResourcesIcon from './icons/HumanResourcesIcon';
-import ApplicationModal from './ApplicationModal';
 import ApplicationList from './ApplicationList';
 import SearchIcon from './icons/SearchIcon';
 import BellPlusIcon from './icons/BellPlusIcon';
@@ -42,22 +41,20 @@ const getJobCountForCategory = (jobs: Job[], keywords: string[]): number => {
 interface EmployeeDashboardProps {
   jobs: Job[];
   applications: Application[];
-  addApplication: (jobId: string) => void;
   addNotification: (message: string, type: NotificationType) => void;
   jobAlerts: JobAlert[];
   addJobAlert: (alert: Omit<JobAlert, 'id'>) => void;
   removeJobAlert: (alertId: string) => void;
+  openApplicationModal: (job: Job) => void;
 }
 
-const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, applications, addApplication, addNotification, jobAlerts, addJobAlert, removeJobAlert }) => {
+const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, applications, addNotification, jobAlerts, addJobAlert, removeJobAlert, openApplicationModal }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [locationTerm, setLocationTerm] = useState('');
     const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'all' | 'saved' | 'applications'>('all');
     const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
-
-    const [applyingForJob, setApplyingForJob] = useState<Job | null>(null);
 
     // Create some mock notifications for demonstration purposes
     useEffect(() => {
@@ -71,27 +68,6 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
     }, [jobs, addNotification]);
 
     const appliedJobIds = useMemo(() => new Set(applications.map(app => app.jobId)), [applications]);
-
-    const handleOpenApplicationModal = (job: Job) => {
-        setApplyingForJob(job);
-    };
-
-    const handleCloseApplicationModal = () => {
-        setApplyingForJob(null);
-    };
-
-    const handleApplicationSubmit = (applicationData: { coverLetter: string; cvFile: File | null; otherFiles: File[] }) => {
-        if (!applyingForJob) return;
-        
-        console.log('Application submitted for:', applyingForJob.title);
-        console.log('Application Data:', applicationData);
-
-        addApplication(applyingForJob.id);
-        
-        addNotification(`You have successfully applied for "${applyingForJob.title}".`, NotificationType.Success);
-
-        handleCloseApplicationModal();
-    };
 
     const handleSaveJob = (jobId: string) => {
         setSavedJobIds(prev => {
@@ -148,7 +124,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
                     <JobCard
                         key={job.id}
                         job={job}
-                        onApply={handleOpenApplicationModal}
+                        onApply={openApplicationModal}
                         isApplied={appliedJobIds.has(job.id)}
                         onSave={handleSaveJob}
                         isSaved={savedJobIds.has(job.id)}
@@ -249,13 +225,6 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
                 </div>
             </main>
             
-            <ApplicationModal 
-                isOpen={!!applyingForJob}
-                job={applyingForJob}
-                onClose={handleCloseApplicationModal}
-                onSubmit={handleApplicationSubmit}
-            />
-
             <JobAlertsModal 
                 isOpen={isAlertsModalOpen}
                 onClose={() => setIsAlertsModalOpen(false)}

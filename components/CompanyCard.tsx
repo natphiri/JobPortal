@@ -6,9 +6,10 @@ import LocationIcon from './icons/LocationIcon';
 
 interface CompanyCardProps {
     company: Company;
+    onViewJobs: (company: Company) => void;
 }
 
-const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
+const CompanyCard: React.FC<CompanyCardProps> = ({ company, onViewJobs }) => {
     return (
         <div className="bg-white dark:bg-gray-800/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700/50 group-hover:shadow-md group-hover:border-blue-500 dark:group-hover:border-blue-400 transition-all duration-300 flex flex-col h-full group">
             <div className="flex items-center space-x-4 mb-4">
@@ -42,6 +43,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
 
             <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <button
+                    onClick={() => onViewJobs(company)}
                     className="w-full px-4 py-2 rounded-lg font-semibold transition-colors text-sm bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
                 >
                     View Jobs

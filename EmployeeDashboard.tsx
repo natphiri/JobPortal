@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Job, Application, ApplicationStatus, NotificationType, JobAlert } from '../types';
+import { Job, Application, ApplicationStatus, NotificationType } from '../types';
 import JobCard from './JobCard';
 import CategorySearch from './CategorySearch';
 import SearchHero from './SearchHero';
@@ -9,10 +9,8 @@ import CustomerServiceIcon from './icons/CustomerServiceIcon';
 import FinanceIcon from './icons/FinanceIcon';
 import HealthcareIcon from './icons/HealthcareIcon';
 import HumanResourcesIcon from './icons/HumanResourcesIcon';
+import ApplicationModal from './ApplicationModal';
 import ApplicationList from './ApplicationList';
-import SearchIcon from './icons/SearchIcon';
-import BellPlusIcon from './icons/BellPlusIcon';
-import JobAlertsModal from './JobAlertsModal';
 
 interface Category {
   name: string;
@@ -41,20 +39,18 @@ const getJobCountForCategory = (jobs: Job[], keywords: string[]): number => {
 interface EmployeeDashboardProps {
   jobs: Job[];
   applications: Application[];
+  addApplication: (jobId: string, userId: string) => void;
   addNotification: (message: string, type: NotificationType) => void;
-  jobAlerts: JobAlert[];
-  addJobAlert: (alert: Omit<JobAlert, 'id'>) => void;
-  removeJobAlert: (alertId: string) => void;
-  openApplicationModal: (job: Job) => void;
 }
 
-const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, applications, addNotification, jobAlerts, addJobAlert, removeJobAlert, openApplicationModal }) => {
+const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, applications, addApplication, addNotification }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [locationTerm, setLocationTerm] = useState('');
     const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'all' | 'saved' | 'applications'>('all');
-    const [isAlertsModalOpen, setIsAlertsModalOpen] = useState(false);
+
+    const [applyingForJob, setApplyingForJob] = useState<Job | null>(null);
 
     // Create some mock notifications for demonstration purposes
     useEffect(() => {
@@ -68,6 +64,28 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
     }, [jobs, addNotification]);
 
     const appliedJobIds = useMemo(() => new Set(applications.map(app => app.jobId)), [applications]);
+
+    const handleOpenApplicationModal = (job: Job) => {
+        setApplyingForJob(job);
+    };
+
+    const handleCloseApplicationModal = () => {
+        setApplyingForJob(null);
+    };
+
+    const handleApplicationSubmit = (applicationData: { coverLetter: string; cvFile: File | null; otherFiles: File[] }) => {
+        if (!applyingForJob) return;
+        
+        console.log('Application submitted for:', applyingForJob.title);
+        console.log('Application Data:', applicationData);
+
+        // In a real app, userId would come from auth context
+        addApplication(applyingForJob.id, 'mock-user-123');
+        
+        addNotification(`You have successfully applied for "${applyingForJob.title}".`, NotificationType.Success);
+
+        handleCloseApplicationModal();
+    };
 
     const handleSaveJob = (jobId: string) => {
         setSavedJobIds(prev => {
@@ -124,7 +142,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
                     <JobCard
                         key={job.id}
                         job={job}
-                        onApply={openApplicationModal}
+                        onApply={handleOpenApplicationModal}
                         isApplied={appliedJobIds.has(job.id)}
                         onSave={handleSaveJob}
                         isSaved={savedJobIds.has(job.id)}
@@ -133,10 +151,9 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
             </div>
             {filteredJobs.length === 0 && (
                 <div className="text-center py-16">
-                    <SearchIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-                    <h3 className="mt-4 text-xl font-semibold text-gray-800 dark:text-gray-200">No jobs found</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
-                        {activeTab === 'saved' ? "You haven't saved any jobs yet." : "Try adjusting your search or category filters to find what you're looking for."}
+                    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">No jobs found</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">
+                        {activeTab === 'saved' ? "You haven't saved any jobs yet." : "Try adjusting your search or category filters."}
                     </p>
                 </div>
             )}
@@ -160,62 +177,48 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
             
                 <div className={activeTab !== 'applications' ? "mt-16" : ""}>
                     <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-                        <div className="flex justify-between items-center">
-                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                <button
-                                    onClick={() => setActiveTab('all')}
-                                    className={`${
-                                        activeTab === 'all'
-                                            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-                                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-                                >
-                                    All Jobs
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('saved')}
-                                    className={`${
-                                        activeTab === 'saved'
-                                            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-                                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
-                                >
-                                    Saved Jobs 
-                                    {savedJobIds.size > 0 && (
-                                        <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full dark:bg-blue-900/50 dark:text-blue-300">
-                                            {savedJobIds.size}
-                                        </span>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('applications')}
-                                    className={`${
-                                        activeTab === 'applications'
-                                            ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-                                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
-                                >
-                                    My Applications
-                                    {applications.length > 0 && (
-                                        <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full dark:bg-blue-900/50 dark:text-blue-300">
-                                            {applications.length}
-                                        </span>
-                                    )}
-                                </button>
-                            </nav>
-                             <button
-                                onClick={() => setIsAlertsModalOpen(true)}
-                                className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-white dark:bg-gray-800/50 text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                            <button
+                                onClick={() => setActiveTab('all')}
+                                className={`${
+                                    activeTab === 'all'
+                                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
                             >
-                                <BellPlusIcon className="w-5 h-5" />
-                                <span>Manage Alerts</span>
-                                {jobAlerts.length > 0 && (
-                                     <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full dark:bg-blue-900/50 dark:text-blue-300">
-                                        {jobAlerts.length}
+                                All Jobs
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('saved')}
+                                className={`${
+                                    activeTab === 'saved'
+                                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+                            >
+                                Saved Jobs 
+                                {savedJobIds.size > 0 && (
+                                    <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full dark:bg-blue-900/50 dark:text-blue-300">
+                                        {savedJobIds.size}
                                     </span>
                                 )}
                             </button>
-                        </div>
+                             <button
+                                onClick={() => setActiveTab('applications')}
+                                className={`${
+                                    activeTab === 'applications'
+                                        ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+                                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+                            >
+                                My Applications
+                                {applications.length > 0 && (
+                                    <span className="ml-2 bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full dark:bg-blue-900/50 dark:text-blue-300">
+                                        {applications.length}
+                                    </span>
+                                )}
+                            </button>
+                        </nav>
                     </div>
 
                     {activeTab === 'all' && renderJobGrid()}
@@ -225,13 +228,11 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ jobs, application
                 </div>
             </main>
             
-            <JobAlertsModal 
-                isOpen={isAlertsModalOpen}
-                onClose={() => setIsAlertsModalOpen(false)}
-                currentAlerts={jobAlerts}
-                onAddAlert={addJobAlert}
-                onRemoveAlert={removeJobAlert}
-                availableCategories={categories.map(c => c.name)}
+            <ApplicationModal 
+                isOpen={!!applyingForJob}
+                job={applyingForJob}
+                onClose={handleCloseApplicationModal}
+                onSubmit={handleApplicationSubmit}
             />
         </div>
     );
